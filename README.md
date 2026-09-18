@@ -97,8 +97,9 @@ Launch the real-time interactive OpenCV wind tunnel window to manipulate geometr
 
 ```Bash
 python examples/interactive_wind_tunnel.py
-Controls: Press A / D to rotate neural geometry live | Press Q to quit.
 ```
+Controls: Press A / D to rotate neural geometry live | Press Q to quit.
+
 ## Live Interactive Simulation
 
 Try the interactive 2D solver directly in your browser (no installation required):
