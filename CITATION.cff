@@ -1,0 +1,17 @@
+﻿cff-version: 1.2.0
+message: "If you use this software in your research, please cite it using the metadata from this file."
+title: "JAX-Neural-CFD: Differentiable Supersonic Flow & Neural SDF Optimization"
+version: 1.0.0
+date-released: 2026-09-18
+url: "https://github.com/mohauop/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization"
+repository-code: "https://github.com/mohauop/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization"
+license: MIT
+authors:
+* family-names: "Bettahar" given-names: "Mohammed Nadir" orcid: "https://orcid.org/0009-0006-7011-8022" keywords:
+* "computational fluid dynamics"
+* "differentiable physics"
+* "JAX"
+* "neural signed distance fields"
+* "shape optimization"
+* "euler equations"
+* "gpu acceleration"
