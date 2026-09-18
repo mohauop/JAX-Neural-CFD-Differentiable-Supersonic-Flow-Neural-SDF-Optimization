@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time 2D CFD Fluid Simulation</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 8px; color: #38bdf8; }
+        p { font-size: 0.9rem; color: #94a3b8; margin-bottom: 16px; }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background: #1e293b;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            background: #000;
+            cursor: crosshair;
+            image-rendering: pixelated;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .btn-group { display: flex; gap: 8px; }
+        
+        button {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0369a1; }
+        button.secondary { background: #475569; }
+        button.secondary:hover { background: #334155; }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        input[type="range"] {
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Real-Time D2Q9 Lattice Boltzmann CFD</h1>
+    <p>Click & drag on the canvas to draw solid obstacles. Flow moves left to right.</p>
+
+    <div class="container">
+        <canvas id="canvas" width="300" height="150"></canvas>
+        
+        <div class="controls">
+            <div class="btn-group">
+                <button id="toggleBtn">Pause</button>
+                <button id="resetBtn" class="secondary">Clear Obstacles</button>
+                <button id="presetBtn" class="secondary">Add Airfoil/Cylinder</button>
+            </div>
+
+            <div class="slider-group">
+                <label for="speedSlider">Inflow Speed:</label>
+                <input type="range" id="speedSlider" min="0.01" max="0.12" step="0.01" value="0.06">
+                <span id="speedVal">0.06</span>
+            </div>
+
+            <div class="slider-group">
+                <label for="viscSlider">Viscosity:</label>
+                <input type="range" id="viscSlider" min="0.005" max="0.08" step="0.005" value="0.02">
+                <span id="viscVal">0.02</span>
+            </div>
+        </div>
+    </div>
+
+<script>
+const width = 300;
+const height = 150;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const imgData = ctx.createImageData(width, height);
+
+// D2Q9 Constants
+const w = [4/9, 1/9, 1/9, 1/9, 1/9, 1/36, 1/36, 1/36, 1/36];
+const cx = [0, 1, 0, -1, 0, 1, -1, -1, 1];
+const cy = [0, 0, 1, 0, -1, 1, 1, -1, -1];
+const opp = [0, 3, 4, 1, 2, 7, 8, 5, 6];
+
+let uInlet = 0.06;
+let viscosity = 0.02;
+let tau = 3 * viscosity + 0.5;
+let isRunning = true;
+
+// Grid Arrays
+const size = width * height;
+let n = new Float32Array(9 * size);
+let nNext = new Float32Array(9 * size);
+let barrier = new Uint8Array(size);
+
+function init() {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const idx = y * width + x;
+            barrier[idx] = 0;
+            
+            // Default obstacle (Cylinder)
+            if ((x - 60)**2 + (y - 75)**2 < 12**2) {
+                barrier[idx] = 1;
+            }
+
+            const rho = 1.0;
+            const ux = uInlet;
+            const uy = 0;
+
+            for (let i = 0; i < 9; i++) {
+                n[idx * 9 + i] = eq(i, rho, ux, uy);
+            }
+        }
+    }
+}
+
+function eq(i, rho, ux, uy) {
+    const cidotu = cx[i] * ux + cy[i] * uy;
+    const usq = ux * ux + uy * uy;
+    return w[i] * rho * (1 + 3 * cidotu + 4.5 * cidotu * cidotu - 1.5 * usq);
+}
+
+function collideAndStream() {
+    tau = 3 * viscosity + 0.5;
+    const omega = 1 / tau;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const idx = y * width + x;
+            const bIdx = idx * 9;
+
+            if (barrier[idx]) continue;
+
+            // Compute macro variables
+            let rho = 0;
+            let ux = 0;
+            let uy = 0;
+
+            for (let i = 0; i < 9; i++) {
+                const val = n[bIdx + i];
+                rho += val;
+                ux += val * cx[i];
+                uy += val * cy[i];
+            }
+
+            if (rho > 0) {
+                ux /= rho;
+                uy /= rho;
+            }
+
+            // Inflow at left boundary
+            if (x === 0) {
+                ux = uInlet;
+                uy = 0;
+                rho = 1.0;
+            }
+
+            // Collision & Streaming
+            for (let i = 0; i < 9; i++) {
+                const feq = eq(i, rho, ux, uy);
+                const nOut = n[bIdx + i] * (1 - omega) + feq * omega;
+
+                let nextX = x + cx[i];
+                let nextY = y + cy[i];
+
+                // Periodic Y, Open X
+                if (nextY < 0) nextY = height - 1;
+                if (nextY >= height) nextY = 0;
+
+                if (nextX >= 0 && nextX < width) {
+                    const nextIdx = nextY * width + nextX;
+                    if (barrier[nextIdx]) {
+                        // Bounce-back
+                        nNext[bIdx + opp[i]] = nOut;
+                    } else {
+                        nNext[nextIdx * 9 + i] = nOut;
+                    }
+                }
+            }
+        }
+    }
+    
+    n.set(nNext);
+}
+
+function render() {
+    const pixels = imgData.data;
+
+    for (let idx = 0; idx < size; idx++) {
+        const pIdx = idx * 4;
+
+        if (barrier[idx]) {
+            pixels[pIdx] = 255;
+            pixels[pIdx + 1] = 255;
+            pixels[pIdx + 2] = 255;
+            pixels[pIdx + 3] = 255;
+            continue;
+        }
+
+        const bIdx = idx * 9;
+        let rho = 0, ux = 0, uy = 0;
+        for (let i = 0; i < 9; i++) {
+            const val = n[bIdx + i];
+            rho += val;
+            ux += val * cx[i];
+            uy += val * cy[i];
+        }
+        
+        const speed = Math.sqrt(ux * ux + uy * uy);
+        
+        // Colormap (Jet / Speed palette)
+        const val = Math.min(1.0, speed / (uInlet * 2.2));
+        pixels[pIdx]     = Math.min(255, Math.floor(255 * Math.sin(val * Math.PI * 0.5))); 
+        pixels[pIdx + 1] = Math.min(255, Math.floor(255 * Math.sin(val * Math.PI)));       
+        pixels[pIdx + 2] = Math.min(255, Math.floor(255 * Math.cos(val * Math.PI * 0.5))); 
+        pixels[pIdx + 3] = 255;
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+}
+
+function step() {
+    if (isRunning) {
+        for (let i = 0; i < 4; i++) collideAndStream();
+        render();
+    }
+    requestAnimationFrame(step);
+}
+
+// Interactive Drawing
+let isMouseDown = false;
+canvas.addEventListener('mousedown', (e) => { isMouseDown = true; drawBarrier(e); });
+canvas.addEventListener('mouseup', () => isMouseDown = false);
+canvas.addEventListener('mousemove', (e) => { if (isMouseDown) drawBarrier(e); });
+
+function drawBarrier(e) {
+    const rect = canvas.getBoundingClientRect();
+    const cx = Math.floor((e.clientX - rect.left) * (width / rect.width));
+    const cy = Math.floor((e.clientY - rect.top) * (height / rect.height));
+
+    const radius = 4;
+    for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+            const x = cx + dx;
+            const y = cy + dy;
+            if (x >= 0 && x < width && y >= 0 && y < height) {
+                if (dx*dx + dy*dy <= radius*radius) {
+                    barrier[y * width + x] = 1;
+                }
+            }
+        }
+    }
+}
+
+// UI Handlers
+document.getElementById('toggleBtn').onclick = (e) => {
+    isRunning = !isRunning;
+    e.target.innerText = isRunning ? "Pause" : "Play";
+};
+
+document.getElementById('resetBtn').onclick = () => {
+    barrier.fill(0);
+};
+
+document.getElementById('presetBtn').onclick = () => {
+    init();
+};
+
+document.getElementById('speedSlider').oninput = (e) => {
+    uInlet = parseFloat(e.target.value);
+    document.getElementById('speedVal').innerText = uInlet;
+};
+
+document.getElementById('viscSlider').oninput = (e) => {
+    viscosity = parseFloat(e.target.value);
+    document.getElementById('viscVal').innerText = viscosity;
+};
+
+// Start
+init();
+step();
+</script>
+</body>
+</html>
