@@ -20,21 +20,21 @@ A pure-JAX, GPU-accelerated 1D/2D Euler equations solver coupled with continuous
 
 ## Architecture Overview
 
-+------------------------+     +------------------------+
-| Neural SDF Network     | --> | Continuous Body Mask   |
-| (MLP Coordinates: X,Y) |     | M(x,y) ∈ [0, 1]        |
-+------------------------+     +------------------------+
-|
-v
-+------------------------+     +------------------------+
-| Target Objective       | <-- | 2D Euler JAX Solver    |
-| (Min Wave Drag + Area) |     | (Rusanov Flux Scheme)  |
-+------------------------+     +------------------------+
-|
-
-+======= Reverse AD (jax.grad) ===> Optimizes MLP Weights
-
----
+```text
++-------------------+    +--------------------+    +----------------------+
+| Coordinates: X,Y  |--> | Neural SDF Network |--> | Continuous Body Mask |
++-------------------+    +--------------------+    +----------------------+
+                                                                  |
+                                                                  v
++-------------------------------------------------------------------------+
+|                  2D Euler JAX Solver (Rusanov Scheme)                   |
++-------------------------------------------------------------------------+
+                                      ^
+                                      | (Target Objective)
++-------------------------------------------------------------------------+
+| Reverse AD (jax.grad) ===> Optimizes MLP Weights                        |
++-------------------------------------------------------------------------+
+```
 
 ## Mathematical Formulation
 
