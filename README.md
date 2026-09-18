@@ -18,7 +18,7 @@ A pure-JAX, GPU-accelerated 1D/2D Euler equations solver coupled with continuous
 
 ---
 
-<video src="simulation.mp4" autoplay loop muted playsinline></video>
+[simulation.mp4](simulation.mp4)
 
 ## Architecture Overview
 ```text
