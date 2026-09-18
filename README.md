@@ -76,8 +76,8 @@ Ensure you have a modern Python environment and JAX installed with appropriate G
 
 ```bash
 # Clone repository
-git clone [https://github.com/mohauop/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization.git](https://github.com/mohauop/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization.git)
-cd jax-neural-cfd
+git clone https://github.com/mohauop/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization.git
+cd JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization
 ```
 
 # Install dependencies
