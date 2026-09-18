@@ -102,7 +102,7 @@ Controls: Press A / D to rotate neural geometry live | Press Q to quit.
 ## Live Interactive Simulation
 
 Try the interactive 2D solver directly in your browser (no installation required):
-[**Launch Live CFD Simulation**](https://github.io/mohauop/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization/simulation.html)
+[https://mohauop.github.io/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization/simulation.html](https://mohauop.github.io/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization/simulation.html)
 ## Benchmarks & Performance
 
 *Tested on **NVIDIA RTX 3090** (CUDA 12.x, JAX 0.4.x) over 200 simulation time-steps:*
