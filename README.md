@@ -18,6 +18,8 @@ A pure-JAX, GPU-accelerated 1D/2D Euler equations solver coupled with continuous
 
 ---
 
+<video src="https://mohauop.github.io/JAX-Neural-CFD-Differentiable-Supersonic-Flow-Neural-SDF-Optimization/simulation.mp4" autoplay loop muted playsinline></video>
+
 ## Architecture Overview
 
 ```text
